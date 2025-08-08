@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUMBERS ARE MY FRIENDS (FLN)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-yellow-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- Helper: Marathi Numbers ---
+        const numberToMarathi = (num) => {
+            if (num > 1000 || num < 0) return '';
+            if (num === 0) return 'शून्य';
+            if (num === 1000) return 'एक हजार';
+            const ones = ['', 'एक', 'दोन', 'तीन', 'चार', 'पाच', 'सहा', 'सात', 'आठ', 'नऊ'];
+            const teens = ['दहा', 'अकरा', 'बारा', 'तेरा', 'चौदा', 'पंधरा', 'सोळा', 'सतरा', 'अठरा', 'एकोणीस'];
+            const tens = ['', '', 'वीस', 'तीस', 'चाळीस', 'पन्नास', 'साठ', 'सत्तर', 'ऐंशी', 'नव्वद'];
+            let words = '';
+            if (num >= 100) {
+                words += (ones[Math.floor(num / 100)] || '') + 'शे ';
+                num %= 100;
+            }
+            if (num >= 20) {
+                words += tens[Math.floor(num / 10)];
+                if (num % 10 !== 0) { words += ' ' + ones[num % 10]; }
+            } else if (num >= 10) {
+                words += teens[num - 10];
+            } else if (num > 0) {
+                words += ones[num];
+            }
+            return words.trim();
+        };
+
+        // --- SVG Icons ---
+        const PlusCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
+        const MinusCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
+        const RefreshCwIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12A9 9 0 0 1 12 3v1m0 16v1a9 9 0 0 1-9-9h-1m18 0h-1a9 9 0 0 1-9 9v-1m0-16V3a9 9 0 0 1 9 9h1"/></svg>;
+
+        // --- Reusable Components ---
+        const Block = ({ color, size, count, isVertical = false }) => (
+            <div className={`flex flex-wrap justify-center items-center gap-1 ${isVertical ? 'flex-col' : ''}`}>
+                {Array.from({ length: count }).map((_, i) => <div key={i} className={`${color} ${size} rounded-sm shadow-md`}></div>)}
+            </div>
+        );
+
+        const FeedbackMessage = ({ message, type }) => {
+            if (!message) return null;
+            const color = type === 'success' ? 'text-green-600' : 'text-red-600';
+            return <p className={`mt-4 text-3xl font-bold ${color}`}>{message}</p>;
+        };
+
+        // --- Main App Sections ---
+
+        // 1. Place Value Tool
+        const PlaceValueTool = () => {
+            const [hundreds, setHundreds] = React.useState(0);
+            const [tens, setTens] = React.useState(0);
+            const [ones, setOnes] = React.useState(0);
+            const [mode, setMode] = React.useState('explore');
+            const [targetNumber, setTargetNumber] = React.useState(0);
+            const [feedback, setFeedback] = React.useState({ msg: '', type: '' });
+
+            const currentNumber = React.useMemo(() => hundreds * 100 + tens * 10 + ones, [hundreds, tens, ones]);
+
+            const resetBlocks = () => {
+                setHundreds(0);
+                setTens(0);
+                setOnes(0);
+                setFeedback({ msg: '', type: '' });
+            };
+
+            const generateNewChallenge = () => {
+                setTargetNumber(Math.floor(Math.random() * 999) + 1);
+                resetBlocks();
+            };
+
+            const checkAnswer = () => {
+                if (currentNumber === targetNumber) {
+                    setFeedback({ msg: 'छान! अगदी बरोबर!', type: 'success' });
+                } else {
+                    setFeedback({ msg: 'पुन्हा प्रयत्न करा.', type: 'error' });
+                }
+            };
+            
+            React.useEffect(() => {
+                if (mode === 'challenge') generateNewChallenge();
+                else resetBlocks();
+            }, [mode]);
+
+            const BlockController = ({ title, count, onAdd, onRemove, color }) => (
+                <div className={`p-4 rounded-lg shadow-inner flex flex-col items-center gap-2 ${color}`}>
+                    <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+                    <div className="flex items-center gap-4">
+                        <button onClick={onRemove} className="text-red-600 hover:text-red-800 transition-transform transform hover:scale-110 disabled:opacity-50" disabled={count === 0}><MinusCircleIcon /></button>
+                        <span className="text-3xl font-mono font-bold text-gray-900 w-12 text-center">{count}</span>
+                        <button onClick={onAdd} className="text-green-600 hover:text-green-800 transition-transform transform hover:scale-110 disabled:opacity-50" disabled={count === 9}><PlusCircleIcon /></button>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div>
+                    <div className="flex justify-center gap-4 my-6 bg-white p-2 rounded-full shadow-md">
+                        <button onClick={() => setMode('explore')} className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ${mode === 'explore' ? 'bg-blue-500 text-white shadow-lg' : 'bg-gray-200'}`}>सराव करा</button>
+                        <button onClick={() => setMode('challenge')} className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ${mode === 'challenge' ? 'bg-green-500 text-white shadow-lg' : 'bg-gray-200'}`}>अंक बनवा</button>
+                    </div>
+
+                    {mode === 'challenge' && (
+                        <div className="bg-green-100 border-2 border-green-400 text-center p-4 rounded-xl mb-6 shadow-lg">
+                            <h2 className="text-2xl font-bold text-green-800">हा अंक बनवा:</h2>
+                            <p className="text-6xl font-bold text-green-900 my-2">{targetNumber}</p>
+                            <p className="text-2xl text-green-700">{numberToMarathi(targetNumber)}</p>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                        <div className="bg-white p-4 rounded-xl shadow-lg space-y-4">
+                            <BlockController title="शतक (100s)" count={hundreds} onAdd={() => setHundreds(c => c + 1)} onRemove={() => setHundreds(c => c - 1)} color="bg-red-100" />
+                            <BlockController title="दशक (10s)" count={tens} onAdd={() => setTens(c => c + 1)} onRemove={() => setTens(c => c - 1)} color="bg-blue-100" />
+                            <BlockController title="एकक (1s)" count={ones} onAdd={() => setOnes(c => c + 1)} onRemove={() => setOnes(c => c - 1)} color="bg-yellow-100" />
+                        </div>
+                        <div className="bg-white p-4 rounded-xl shadow-lg min-h-[300px]">
+                            <div className="flex flex-col gap-3">
+                                <Block count={hundreds} color="bg-red-400" size="w-16 h-16" />
+                                <Block count={tens} color="bg-blue-400" size="w-4 h-16" />
+                                <Block count={ones} color="bg-yellow-400" size="w-4 h-4" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-purple-100 border-2 border-purple-400 text-center p-4 rounded-xl mt-6 shadow-lg">
+                        <h2 className="text-2xl font-bold text-purple-800">तुमचा अंक:</h2>
+                        <p className="text-7xl font-bold text-purple-900 my-2">{currentNumber}</p>
+                        <p className="text-2xl text-purple-700">{numberToMarathi(currentNumber)}</p>
+                    </div>
+
+                    <div className="text-center mt-6">
+                        {mode === 'challenge' && (
+                            <div className="flex justify-center items-center gap-4">
+                                <button onClick={checkAnswer} className="bg-green-500 text-white font-bold px-8 py-3 rounded-full text-xl shadow-lg hover:bg-green-600">तपासा</button>
+                                <button onClick={generateNewChallenge} className="bg-yellow-500 text-white font-bold px-8 py-3 rounded-full text-xl shadow-lg hover:bg-yellow-600">नवीन अंक</button>
+                            </div>
+                        )}
+                        <button onClick={resetBlocks} className="mt-4 bg-gray-500 text-white font-bold px-6 py-2 rounded-full text-lg shadow-md hover:bg-gray-600"><RefreshCwIcon className="inline-block mr-2"/> साफ करा</button>
+                        <FeedbackMessage message={feedback.msg} type={feedback.type} />
+                    </div>
+                </div>
+            );
+        };
+
+        // 2. Number Games Section
+        const NumberGames = () => {
+            const [game, setGame] = React.useState('whatsTheNumber');
+
+            const WhatsTheNumber = () => {
+                const [h, setH] = React.useState(0);
+                const [t, setT] = React.useState(0);
+                const [o, setO] = React.useState(0);
+                const [answer, setAnswer] = React.useState('');
+                const [feedback, setFeedback] = React.useState({ msg: '', type: '' });
+                
+                const target = React.useMemo(() => h * 100 + t * 10 + o, [h, t, o]);
+
+                const newGame = () => {
+                    setH(Math.floor(Math.random() * 10));
+                    setT(Math.floor(Math.random() * 10));
+                    setO(Math.floor(Math.random() * 10));
+                    setAnswer('');
+                    setFeedback({ msg: '', type: '' });
+                };
+
+                const check = () => {
+                    if (parseInt(answer) === target) {
+                        setFeedback({ msg: 'उत्तम!', type: 'success' });
+                    } else {
+                        setFeedback({ msg: `चुकलं! बरोबर उत्तर आहे ${target}`, type: 'error' });
+                    }
+                };
+
+                React.useEffect(newGame, []);
+
+                return (
+                    <div className="bg-white p-6 rounded-xl shadow-lg text-center">
+                        <h3 className="text-2xl font-bold text-indigo-700 mb-4">ब्लॉक्स पाहून अंक ओळखा</h3>
+                        <div className="bg-gray-100 p-4 rounded-lg min-h-[200px] flex justify-center items-center gap-4">
+                            <Block count={h} color="bg-red-400" size="w-10 h-10" />
+                            <Block count={t} color="bg-blue-400" size="w-3 h-10" />
+                            <Block count={o} color="bg-yellow-400" size="w-3 h-3" />
+                        </div>
+                        <div className="my-4">
+                            <input type="number" value={answer} onChange={e => setAnswer(e.target.value)} className="text-center text-4xl font-bold w-48 p-2 border-2 rounded-lg" placeholder="?"/>
+                        </div>
+                        <div className="flex justify-center gap-4">
+                            <button onClick={check} className="bg-green-500 text-white font-bold px-8 py-3 rounded-full text-xl shadow-lg hover:bg-green-600">उत्तर तपासा</button>
+                            <button onClick={newGame} className="bg-yellow-500 text-white font-bold px-8 py-3 rounded-full text-xl shadow-lg hover:bg-yellow-600">पुढील</button>
+                        </div>
+                        <FeedbackMessage message={feedback.msg} type={feedback.type} />
+                    </div>
+                );
+            };
+
+            const ComparisonGame = () => {
+                const [numA, setNumA] = React.useState(0);
+                const [numB, setNumB] = React.useState(0);
+                const [feedback, setFeedback] = React.useState({ msg: '', type: '' });
+
+                const newGame = () => {
+                    let a = Math.floor(Math.random() * 100) + 1;
+                    let b = Math.floor(Math.random() * 100) + 1;
+                    setNumA(a);
+                    setNumB(b);
+                    setFeedback({ msg: '', type: '' });
+                };
+                
+                React.useEffect(newGame, []);
+
+                const check = (op) => {
+                    let correct = false;
+                    if (op === '<' && numA < numB) correct = true;
+                    if (op === '>' && numA > numB) correct = true;
+                    if (op === '=' && numA === numB) correct = true;
+                    
+                    if (correct) {
+                        setFeedback({ msg: 'बरोबर!', type: 'success' });
+                    } else {
+                        setFeedback({ msg: 'चूक! पुन्हा प्रयत्न करा.', type: 'error' });
+                    }
+                };
+
+                return (
+                    <div className="bg-white p-6 rounded-xl shadow-lg text-center">
+                        <h3 className="text-2xl font-bold text-indigo-700 mb-4">लहान-मोठी संख्या ओळखा</h3>
+                        <div className="flex justify-around items-center my-6">
+                            <div className="text-8xl font-bold text-blue-600">{numA}</div>
+                            <div className="flex flex-col gap-2">
+                                <button onClick={() => check('>')} className="text-6xl font-bold text-gray-700 bg-gray-200 w-20 h-20 rounded-full flex items-center justify-center hover:bg-green-200">&gt;</button>
+                                <button onClick={() => check('<')} className="text-6xl font-bold text-gray-700 bg-gray-200 w-20 h-20 rounded-full flex items-center justify-center hover:bg-green-200">&lt;</button>
+                                <button onClick={() => check('=')} className="text-6xl font-bold text-gray-700 bg-gray-200 w-20 h-20 rounded-full flex items-center justify-center hover:bg-green-200">=</button>
+                            </div>
+                            <div className="text-8xl font-bold text-red-600">{numB}</div>
+                        </div>
+                        <button onClick={newGame} className="bg-yellow-500 text-white font-bold px-8 py-3 rounded-full text-xl shadow-lg hover:bg-yellow-600">पुढील</button>
+                        <FeedbackMessage message={feedback.msg} type={feedback.type} />
+                    </div>
+                );
+            };
+
+            return (
+                <div>
+                    <div className="flex justify-center gap-4 my-6 bg-white p-2 rounded-full shadow-md">
+                        <button onClick={() => setGame('whatsTheNumber')} className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ${game === 'whatsTheNumber' ? 'bg-indigo-500 text-white shadow-lg' : 'bg-gray-200'}`}>अंक ओळखा</button>
+                        <button onClick={() => setGame('comparison')} className={`px-6 py-2 rounded-full text-lg font-semibold transition-colors ${game === 'comparison' ? 'bg-teal-500 text-white shadow-lg' : 'bg-gray-200'}`}>तुलना करा</button>
+                    </div>
+                    {game === 'whatsTheNumber' ? <WhatsTheNumber /> : <ComparisonGame />}
+                </div>
+            );
+        };
+
+        // 3. Operations Section
+        const Operations = () => {
+            const [num1, setNum1] = React.useState({h:0, t:0, o:0});
+            const [num2, setNum2] = React.useState({h:0, t:0, o:0});
+            
+            const newProblem = () => {
+                const n1 = Math.floor(Math.random() * 400) + 10;
+                const n2 = Math.floor(Math.random() * 400) + 10;
+                setNum1({ h: Math.floor(n1/100), t: Math.floor((n1%100)/10), o: n1%10 });
+                setNum2({ h: Math.floor(n2/100), t: Math.floor((n2%100)/10), o: n2%10 });
+            };
+
+            React.useEffect(newProblem, []);
+
+            const total = (num1.h + num2.h) * 100 + (num1.t + num2.t) * 10 + (num1.o + num2.o);
+            const resultH = Math.floor(total/100);
+            const resultT = Math.floor((total%100)/10);
+            const resultO = total%10;
+
+            return (
+                <div className="bg-white p-6 rounded-xl shadow-lg text-center">
+                    <h3 className="text-2xl font-bold text-rose-700 mb-4">ब्लॉक्स वापरून बेरीज करा</h3>
+                    <div className="flex justify-center items-center gap-6 my-4 p-4 bg-gray-100 rounded-lg">
+                        {/* Number 1 */}
+                        <div className="flex flex-col items-center gap-2">
+                            <p className="text-5xl font-bold">{num1.h*100 + num1.t*10 + num1.o}</p>
+                            <div className="flex gap-2">
+                                <Block count={num1.h} color="bg-red-400" size="w-8 h-8"/>
+                                <Block count={num1.t} color="bg-blue-400" size="w-2 h-8"/>
+                                <Block count={num1.o} color="bg-yellow-400" size="w-2 h-2"/>
+                            </div>
+                        </div>
+                        <p className="text-6xl font-bold text-gray-500">+</p>
+                        {/* Number 2 */}
+                        <div className="flex flex-col items-center gap-2">
+                            <p className="text-5xl font-bold">{num2.h*100 + num2.t*10 + num2.o}</p>
+                            <div className="flex gap-2">
+                                <Block count={num2.h} color="bg-red-400" size="w-8 h-8"/>
+                                <Block count={num2.t} color="bg-blue-400" size="w-2 h-8"/>
+                                <Block count={num2.o} color="bg-yellow-400" size="w-2 h-2"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="text-6xl font-bold my-4">=</div>
+                    {/* Result */}
+                    <div className="bg-green-100 p-4 rounded-lg">
+                        <p className="text-7xl font-bold text-green-800">{total}</p>
+                         <div className="flex justify-center gap-4 mt-4">
+                            <Block count={resultH} color="bg-red-500" size="w-12 h-12"/>
+                            <Block count={resultT} color="bg-blue-500" size="w-3 h-12"/>
+                            <Block count={resultO} color="bg-yellow-500" size="w-3 h-3"/>
+                        </div>
+                    </div>
+                    <button onClick={newProblem} className="mt-6 bg-yellow-500 text-white font-bold px-8 py-3 rounded-full text-xl shadow-lg hover:bg-yellow-600">नवीन उदाहरण</button>
+                </div>
+            );
+        };
+
+        // 4. Currency Practice
+        const CurrencyPractice = () => {
+            const [notes100, setNotes100] = React.useState(0);
+            const [notes10, setNotes10] = React.useState(0);
+            const [coins1, setCoins1] = React.useState(0);
+            
+            const total = React.useMemo(() => notes100 * 100 + notes10 * 10 + coins1, [notes100, notes10, coins1]);
+
+            const Note = ({ value, color }) => <div className={`w-28 h-14 rounded-lg flex items-center justify-center text-2xl font-bold text-white shadow-lg ${color}`}>₹{value}</div>;
+            const Coin = () => <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold bg-yellow-400 text-yellow-900 shadow-lg border-2 border-yellow-600">₹1</div>;
+
+            const CurrencyController = ({ title, count, onAdd, onRemove, color }) => (
+                <div className={`p-3 rounded-lg shadow-inner flex flex-col items-center gap-2 ${color}`}>
+                    <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+                    <div className="flex items-center gap-3">
+                        <button onClick={onRemove} className="text-red-600 hover:text-red-800 disabled:opacity-50" disabled={count === 0}><MinusCircleIcon /></button>
+                        <span className="text-2xl font-mono font-bold text-gray-900 w-10 text-center">{count}</span>
+                        <button onClick={onAdd} className="text-green-600 hover:text-green-800 disabled:opacity-50" disabled={count === 9}><PlusCircleIcon /></button>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 className="text-2xl font-bold text-cyan-700 mb-4 text-center">चलन वापरून सराव</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                        <div className="space-y-3">
+                            <CurrencyController title="₹100 च्या नोटा" count={notes100} onAdd={() => setNotes100(c => c + 1)} onRemove={() => setNotes100(c => c - 1)} color="bg-purple-100" />
+                            <CurrencyController title="₹10 च्या नोटा" count={notes10} onAdd={() => setNotes10(c => c + 1)} onRemove={() => setNotes10(c => c - 1)} color="bg-orange-100" />
+                            <CurrencyController title="₹1 ची नाणी" count={coins1} onAdd={() => setCoins1(c => c + 1)} onRemove={() => setCoins1(c => c - 1)} color="bg-yellow-100" />
+                        </div>
+                        <div className="bg-gray-100 p-4 rounded-lg min-h-[300px]">
+                            <div className="flex flex-wrap justify-center items-center gap-2">
+                                {Array.from({length: notes100}).map((_,i) => <Note key={`n100-${i}`} value={100} color="bg-purple-500" />)}
+                                {Array.from({length: notes10}).map((_,i) => <Note key={`n10-${i}`} value={10} color="bg-orange-500" />)}
+                                {Array.from({length: coins1}).map((_,i) => <Coin key={`c1-${i}`} />)}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-green-100 border-2 border-green-400 text-center p-4 rounded-xl mt-6 shadow-lg">
+                        <h2 className="text-2xl font-bold text-green-800">एकूण रक्कम:</h2>
+                        <p className="text-7xl font-bold text-green-900 my-2">₹{total}</p>
+                        <p className="text-2xl text-green-700">{numberToMarathi(total)} रुपये</p>
+                    </div>
+                </div>
+            );
+        };
+
+
+        // --- Main App Component ---
+        const App = () => {
+            const [activeSection, setActiveSection] = React.useState('placeValue');
+
+            const renderSection = () => {
+                switch (activeSection) {
+                    case 'placeValue': return <PlaceValueTool />;
+                    case 'games': return <NumberGames />;
+                    case 'operations': return <Operations />;
+                    case 'currency': return <CurrencyPractice />;
+                    default: return <PlaceValueTool />;
+                }
+            };
+            
+            const NavButton = ({ sectionId, children }) => (
+                <button 
+                    onClick={() => setActiveSection(sectionId)} 
+                    className={`px-3 py-2 md:px-6 md:py-3 rounded-full text-sm md:text-lg font-semibold transition-all duration-300 transform hover:scale-105 ${activeSection === sectionId ? 'bg-blue-600 text-white shadow-xl' : 'bg-white text-blue-800 shadow-md'}`}
+                >
+                    {children}
+                </button>
+            );
+
+            return (
+                <div className="bg-yellow-50 min-h-screen font-sans text-gray-800 p-2 md:p-4 flex flex-col items-center">
+                    <div className="w-full max-w-5xl mx-auto">
+                        <header className="text-center my-4 p-4 bg-white rounded-xl shadow-md">
+                            <h1 className="text-3xl md:text-4xl font-bold text-blue-600">NUMBERS ARE MY FRIENDS (FLN)</h1>
+                            <h2 className="text-lg md:text-xl font-semibold text-purple-700 mt-2">CREATED BY ATUL SIR</h2>
+                            <p className="text-md text-gray-600">ZPPS DANDEGAON- CLASS 1 TO 8 (BASIC CONCEPTS)</p>
+                        </header>
+
+                        <nav className="flex flex-wrap justify-center gap-2 md:gap-4 my-6">
+                            <NavButton sectionId="placeValue">स्थानिक किंमत</NavButton>
+                            <NavButton sectionId="games">अंकांचे खेळ</NavButton>
+                            <NavButton sectionId="operations">गणिती क्रिया</NavButton>
+                            <NavButton sectionId="currency">चलन सराव</NavButton>
+                        </nav>
+
+                        <main>
+                            {renderSection()}
+                        </main>
+                        
+                        <footer className="text-center text-gray-500 py-6 mt-8">
+                            <p>Happy Learning! &copy; 2024</p>
+                        </footer>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
